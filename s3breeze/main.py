@@ -6,12 +6,41 @@ import subprocess
 import sys
 import tempfile
 import webbrowser
+import xml
+import xml.dom.minidom
 
 from urllib.parse import urlparse
+from xml.parsers.expat import ExpatError
 
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger(__name__)
+
+
+def xml_formatter(text):
+    try:
+        text = json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    try:
+        return xml.dom.minidom.parseString(text).toprettyxml()
+    except ExpatError:
+        logger.debug('Failed to parse xml', exc_info=True)
+
+
+def json_formatter(text):
+    try:
+        return json.dumps(json.loads(text), indent=4, sort_keys=True)
+    except json.JSONDecodeError:
+        logger.debug('Failed to parse json', exc_info=True)
+
+
+def double_json_formatter(text):
+    try:
+        value = json.loads(text)
+        return json.dumps(json.loads(value), indent=4, sort_keys=True)
+    except (json.JSONDecodeError, TypeError):
+        logger.debug('Failed to parse double json', exc_info=True)
 
 
 class S3BreezeShell(cmd.Cmd):
@@ -40,7 +69,7 @@ Files will be stored in {tempfile.gettempdir()}
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as f:
             logger.debug('Output file is %s', f.name)
             try:
-                process = subprocess.run(
+                subprocess.run(
                     ['s3cmd', 'get', s3_uri, f.name, '--force'],
                     stdin=sys.stdin,
                     stdout=sys.stdout,
@@ -51,15 +80,19 @@ Files will be stored in {tempfile.gettempdir()}
                 print(f'Command "{err.cmd}" failed!')
                 return
 
-            # Try to format file content in case it's json
             f.seek(0)
-            try:
-                content = json.load(f)
-                f.seek(0)
-                f.truncate()
-                json.dump(content, f, indent=4, sort_keys=True)
-            except json.JSONDecodeError:
-                pass
+            content = f.read()
+            for formatter in (
+                xml_formatter,
+                double_json_formatter,
+                json_formatter,
+            ):
+                formatted_content = formatter(content)
+                if formatted_content:
+                    f.seek(0)
+                    f.truncate()
+                    f.write(formatted_content)
+                    break
 
         webbrowser.open_new_tab(f'file://{f.name}')
 

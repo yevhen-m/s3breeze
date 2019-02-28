@@ -1,3 +1,4 @@
 black
 ipython
 ipdb
+flake8
