@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import webbrowser
 
 from urllib.parse import urlparse
 
@@ -40,7 +41,8 @@ class S3BreezeShell(cmd.Cmd):
     def do_show(self, line):
         """Show s3 object in the browser tab."""
         parse_result = urlparse(line)
-        s3_uri = f's3:/{parse_result.path}'
+        path = parse_result.path.strip('/')
+        s3_uri = f's3://{path}'
         logger.debug('Open s3 uri %s', s3_uri)
         try:
             with tempfile.NamedTemporaryFile(delete=False) as output_file:
@@ -56,6 +58,7 @@ class S3BreezeShell(cmd.Cmd):
             print(f'Command "{err.cmd}" failed!')
         else:
             format_file_content(output_file.name)
+            webbrowser.open_new_tab(f'file://{output_file.name}')
 
     def default(self, line):
         if line == 'EOF':
