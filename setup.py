@@ -7,6 +7,7 @@ setuptools.setup(
     description="S3Breeze",
     url="https://github.com/yevhen-m/s3breeze",
     packages=setuptools.find_packages(),
+    install_requires=['s3cmd'],
     entry_points = {
         'console_scripts': ['s3breeze=s3breeze.main:main'],
     },
