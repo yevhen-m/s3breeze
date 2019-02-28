@@ -70,5 +70,9 @@ Files will be stored in {tempfile.gettempdir()}
         return self.do_show(line)
 
 
-if __name__ == '__main__':
+def main():
     S3BreezeShell().cmdloop()
+
+
+if __name__ == '__main__':
+    main()
