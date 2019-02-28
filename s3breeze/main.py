@@ -69,7 +69,8 @@ Files will be stored in {OUTPUT_DIR}
         filename = os.path.basename(path)
         s3_uri = f's3://{path}'
         logger.debug('Open s3 uri %s', s3_uri)
-        with open(os.path.join(OUTPUT_DIR, filename), mode='w+') as f:
+        filepath = os.path.abspath(os.path.join(OUTPUT_DIR, filename))
+        with open(filepath, mode='w+') as f:
             logger.debug('Output file is %s', f.name)
             try:
                 subprocess.run(
