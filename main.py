@@ -14,22 +14,15 @@ logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
 
-def format_file_content(filename):
-    with open(filename, 'r+') as f:
-        try:
-            content = json.load(f)
-            f.seek(0)
-            f.truncate()
-            json.dump(content, f, indent=4, sort_keys=True)
-        except json.JSONDecodeError:
-            pass
-
-
 class S3BreezeShell(cmd.Cmd):
-    intro = (
-        'Welcome to the s3breeze shell.   Type help or ? to list commands.\n'
-    )
-    prompt = 's3 object key > '
+    intro = f"""\
+Welcome to the s3breeze shell.
+
+Type help or ? to list commands.
+
+Files will be stored in {tempfile.gettempdir()}
+"""
+    prompt = 'KEY > '
 
     def emptyline(self):
         """Do not repeat last entered command on empty line."""
@@ -44,21 +37,31 @@ class S3BreezeShell(cmd.Cmd):
         path = parse_result.path.strip('/')
         s3_uri = f's3://{path}'
         logger.debug('Open s3 uri %s', s3_uri)
-        try:
-            with tempfile.NamedTemporaryFile(delete=False) as output_file:
-                logger.debug('Output file is %s', output_file.name)
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as f:
+            logger.debug('Output file is %s', f.name)
+            try:
                 process = subprocess.run(
-                    ['s3cmd', 'get', s3_uri, output_file.name, '--force'],
+                    ['s3cmd', 'get', s3_uri, f.name, '--force'],
                     stdin=sys.stdin,
                     stdout=sys.stdout,
                     stderr=sys.stderr,
                     check=True,
                 )
-        except subprocess.CalledProcessError as err:
-            print(f'Command "{err.cmd}" failed!')
-        else:
-            format_file_content(output_file.name)
-            webbrowser.open_new_tab(f'file://{output_file.name}')
+            except subprocess.CalledProcessError as err:
+                print(f'Command "{err.cmd}" failed!')
+                return
+
+            # Try to format file content in case it's json
+            f.seek(0)
+            try:
+                content = json.load(f)
+                f.seek(0)
+                f.truncate()
+                json.dump(content, f, indent=4, sort_keys=True)
+            except json.JSONDecodeError:
+                pass
+
+        webbrowser.open_new_tab(f'file://{f.name}')
 
     def default(self, line):
         if line == 'EOF':
