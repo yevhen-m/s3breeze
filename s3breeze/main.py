@@ -2,6 +2,7 @@ import cmd
 import json
 import logging
 import os
+import os.path
 import subprocess
 import sys
 import tempfile
@@ -12,6 +13,7 @@ import xml.dom.minidom
 from urllib.parse import urlparse
 from xml.parsers.expat import ExpatError
 
+OUTPUT_DIR = os.environ.get('OUTPUT_DIR', tempfile.gettempdir())
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger(__name__)
@@ -49,7 +51,7 @@ Welcome to the s3breeze shell.
 
 Type help or ? to list commands.
 
-Files will be stored in {tempfile.gettempdir()}
+Files will be stored in {OUTPUT_DIR}
 """
     prompt = 'KEY > '
 
@@ -64,9 +66,10 @@ Files will be stored in {tempfile.gettempdir()}
         """Show s3 object in the browser tab."""
         parse_result = urlparse(line)
         path = parse_result.path.strip('/')
+        filename = os.path.basename(path)
         s3_uri = f's3://{path}'
         logger.debug('Open s3 uri %s', s3_uri)
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as f:
+        with open(os.path.join(OUTPUT_DIR, filename), mode='w+') as f:
             logger.debug('Output file is %s', f.name)
             try:
                 subprocess.run(
