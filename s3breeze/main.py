@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 def xml_formatter(text):
     try:
         text = json.loads(text)
+        if type(text) is dict:
+            return None
     except json.JSONDecodeError:
         pass
     try:
